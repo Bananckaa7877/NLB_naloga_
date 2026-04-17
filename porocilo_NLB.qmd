@@ -1,0 +1,1048 @@
+---
+title: "NLB: Podatkovni Znanstvenik - Naloge"
+author: "Ana Pangrc"
+date: today
+format: 
+  html:
+    toc: true
+    toc-depth: 3
+    toc-title: "Kazalo vsebine"
+    theme: cosmo
+    code-fold: true
+    code-tools: true
+    self-contained: true
+lang: sl
+---
+
+# 1. Naloga: Časovne vrste
+
+## 1.1 Vizualizacija in interpretacija podatkov
+
+```{python}
+#| echo: true
+#| warning: false
+
+# Uvoz knjižnic
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Nastavitve za lepše grafe
+plt.rcParams['figure.figsize'] = (12, 5)
+plt.rcParams['font.size'] = 12
+sns.set_theme(style="whitegrid")
+
+# Uvoz podatkov
+bdp = pd.read_csv('bdp.csv', sep=None, engine='python')
+brezposelnost = pd.read_csv('brezposelnost.csv', sep=None, engine='python')
+euribor = pd.read_csv('euribor.csv', sep=None, engine='python')
+nepremicnine = pd.read_csv('nepremicnine.csv', sep=None, engine='python')
+
+# Enotno poimenovanje stolpcev
+bdp.columns = ['Cetrtletje', 'BDP']
+brezposelnost.columns = ['Cetrtletje', 'Brezposelnost']
+euribor.columns = ['Cetrtletje', 'Euribor']
+nepremicnine.columns = ['Cetrtletje', 'Nepremicnine']
+
+# Združitev vseh tabel v eno
+df = bdp.merge(brezposelnost, on='Cetrtletje')
+df = df.merge(euribor, on='Cetrtletje')
+df = df.merge(nepremicnine, on='Cetrtletje')
+df['Indeks'] = range(len(df))
+
+print("Knjižnice uvožene")
+```
+
+```{python}
+#| echo: true
+#| warning: false
+
+# Izris grafov za vse 4 spremenljivke
+fig, axes = plt.subplots(4, 1, figsize=(14, 16))
+
+# Graf 1: BDP
+axes[0].plot(df['Indeks'], df['BDP'], color='steelblue', linewidth=2)
+axes[0].set_title('BDP Slovenije (v milijonih EUR)', fontsize=14, fontweight='bold')
+axes[0].set_ylabel('Milijoni EUR')
+
+# Graf 2: Brezposelnost
+axes[1].plot(df['Indeks'], df['Brezposelnost'], color='tomato', linewidth=2)
+axes[1].set_title('Stopnja brezposelnosti (%)', fontsize=14, fontweight='bold')
+axes[1].set_ylabel('Odstotki (%)')
+
+# Graf 3: Euribor
+axes[2].plot(df['Indeks'], df['Euribor'], color='seagreen', linewidth=2)
+axes[2].set_title('3-mesečni Euribor (%)', fontsize=14, fontweight='bold')
+axes[2].set_ylabel('Odstotki (%)')
+
+# Graf 4: Nepremičnine
+axes[3].plot(df['Indeks'], df['Nepremicnine'], color='darkorange', linewidth=2)
+axes[3].set_title('Povprečna cena nepremičnin (indeks)', fontsize=14, fontweight='bold')
+axes[3].set_ylabel('Indeks')
+
+# Oznake na x-osi (vsako 4. četrtletje = vsako leto)
+leta = df['Cetrtletje'][::4].values
+pozicije = df['Indeks'][::4].values
+for ax in axes:
+    ax.set_xticks(pozicije)
+    ax.set_xticklabels(leta, rotation=45, ha='right', fontsize=9)
+    ax.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.savefig('grafi_casovne_vrste.png', dpi=150, bbox_inches='tight')
+plt.show()
+print("Grafi shranjeni")
+```
+
+### Interpretacija grafov
+
+**BDP Slovenije** kaže dolgoročni trend rasti z dvema opaznejšima padcema: finančna kriza 2008-2009 in COVID-19 2020. Vidna je tudi sezonskost - BDP je višji v poletnih četrtletjih. Po vsaki krizi sledi okrevanje in nadaljevanje rasti.
+
+**Brezposelnost** je obratno sorazmerna z BDP. Vrh ~11% je bil dosežen v 2013 kot zakasnjen učinek finančne krize, nato sledi trend padanja do danes (izjema: kratki skok ob COVID-19).
+
+**Euribor** je doživel dramatičen padec po 2008, sledilo je zgodovinsko dolgo obdobje negativnih obrestnih mer (2015-2022), nato hiter dvig zaradi inflacije in sedaj ponoven padec.
+
+**Cene nepremičnin** so padle po 2008 krizi, od 2015 pa beležimo neprestano rast - cene so se od takrat več kot podvojile. Ni jasnega sezonskega vzorca.
+
+```{python}
+#| echo: true
+#| warning: false
+
+# Izračun korelacije med vsemi spremenljivkami
+korelacije = df[['BDP', 'Brezposelnost', 'Euribor', 'Nepremicnine']].corr()
+
+print("Korelacijska matrika:")
+print(korelacije.round(2))
+
+# Heatmap (barvna tabela korelacij)
+plt.figure(figsize=(8, 6))
+sns.heatmap(korelacije,
+            annot=True,
+            fmt='.2f',
+            cmap='RdYlGn',
+            vmin=-1, vmax=1,
+            square=True,
+            linewidths=0.5)
+plt.title('Korelacije med spremenljivkami', fontsize=14, fontweight='bold')
+plt.tight_layout()
+plt.savefig('korelacije.png', dpi=150, bbox_inches='tight')
+plt.show()
+print("Korelacijska matrika shranjena")
+```
+
+### Odnosi med spremenljivkami
+
+- **BDP in NEPREMIČNINE (0.95):** Zelo močna pozitivna korelacija - gospodarska rast spodbuja povpraševanje po nepremičninah. Višji dohodki pomenijo več nakupov nepremičnin. Najpomembnejša povezava v podatkih.
+
+- **BDP in BREZPOSELNOST (-0.75):** Močna negativna korelacija - klasična ekonomska zakonitost (Okunov zakon). Gospodarska rast ustvarja delovna mesta.
+
+- **NEPREMIČNINE in BREZPOSELNOST (-0.77):** Visoka brezposelnost zmanjša povpraševanje po nepremičninah. Brezposelni ne morejo pridobiti hipotekarnih kreditov.
+
+- **EURIBOR in NEPREMIČNINE (0.52):** Presenetljivo pozitivna - pričakovali bi negativno. Razlog: oba visoka v 2008, oba nizka 2015-2021, oba spet rasla po 2022. Dolgoročno višji Euribor = dražji krediti = manj povpraševanja po nepremičninah.
+
+**Opomba:** Korelacija ne pomeni vzročnosti! Spremenljivke so lahko povezane zaradi skupnih zunanjih dejavnikov (npr. gospodarski cikel).
+
+## 1.2 Napoved cen nepremičnin - ARIMAX model
+
+```{python}
+#| echo: true
+#| warning: false
+
+odgovori_1_2 = """
+ODGOVORI NA VPRAŠANJA - 1.2 ARIMAX MODEL
+==========================================
+
+VPRAŠANJE 1: Kakšne časovne vrste so primerne za ARIMAX?
+----------------------------------------------------------
+ARIMAX model zahteva STACIONARNE časovne vrste.
+Stacionarna časovna vrsta ima:
+- Konstantno povprečje skozi čas (brez trenda)
+- Konstantno varianco (brez vse večjih nihanj)
+- Ni sezonskosti
+
+Naši podatki (BDP, nepremičnine) NISO stacionarni - imajo trend rasti.
+Zato jih moramo pred modeliranjem 'stacionarizirati' z diferenciranjem
+(od vsake vrednosti odštejemo prejšnjo vrednost).
+
+TESTI PRED MODELIRANJEM:
+- ADF test (Augmented Dickey-Fuller): preverimo ali je vrsta stacionarna
+- KPSS test: dodatna potrditev stacionarnosti
+- ACF/PACF grafi: pomagajo določiti parametre modela (p, q)
+- Test sezonskosti: preverimo ali obstajajo sezonski vzorci
+
+TESTI PO MODELIRANJU:
+- Ljung-Box test: preverimo ali so ostanki (napake modela) naključni
+- Shapiro-Wilk test: preverimo ali so ostanki normalno porazdeljeni
+- Test heteroskedastičnosti: preverimo ali je varianca ostankov konstantna
+
+VPRAŠANJE 2: Kaj mora veljati za eksogene spremenljivke?
+---------------------------------------------------------
+Eksogene spremenljivke morajo biti:
+1. Stacionarne (ali jih stacionariziramo)
+2. Dostopne v trenutku napovedi - problem: BDP za naslednje četrtletje
+   še ne poznamo ko delamo napoved! Rešitev: uporabimo napoved BDP
+   ali zamaknjene vrednosti (vrednosti iz prejšnjega četrtletja)
+3. Neodvisne med seboj (ni multikolinearnosti)
+4. Vzročno povezane z odvisno spremenljivko (ne samo korelirane)
+
+VPRAŠANJE 3: Katera eksogena spremenljivka bi najbolj vplivala?
+---------------------------------------------------------------
+Po našem mnenju: BDP
+Razlogi:
+- Najvišja korelacija z nepremičninami (0.95)
+- Ekonomsko logična povezava (gospodarska rast → višje cene)
+- BDP zajema splošno gospodarsko stanje
+
+Na drugem mestu: Brezposelnost (-0.77)
+- Visoka brezposelnost zmanjša povpraševanje po nepremičninah
+- Vpliva na sposobnost pridobitve hipotekarnega kredita
+
+Euribor (0.52) je sicer pomemben, vendar njegova korelacija z
+nepremičninami ni tako enoznačna kot pri BDP.
+
+VPRAŠANJE 4: Kako oceniti napovedno moč modela?
+------------------------------------------------
+- Podatke razdelimo na učno množico (npr. 2008-2022) in testno (2023-2025)
+- Model naučimo na učni množici, napovedi naredimo za testno
+- Merimo napako napovedi z:
+  * MAE (povprečna absolutna napaka)
+  * RMSE (koren povprečne kvadratne napake)
+  * MAPE (povprečna odstotna napaka)
+- Pričakovana napoved: zmerna natančnost, ker cene nepremičnin
+  so odvisne tudi od dejavnikov ki jih nimamo v modelu
+
+VPRAŠANJE 5: Kako določiti parametre modela?
+--------------------------------------------
+Parametri ARIMAX modela so (p, d, q)(P, D, Q):
+- p: število avtoregesivnih členov → določimo z PACF grafom
+- d: stopnja diferenciranja → določimo z ADF testom
+- q: število členov drsečega povprečja → določimo z ACF grafom
+- Sezonski parametri (P,D,Q) → določimo z analizo sezonskosti
+
+Praktično: uporabimo funkcijo auto_arima() ki samodejno poišče
+najboljše parametre z minimizacijo kriterija AIC/BIC.
+
+VPRAŠANJE 6: Kako bi napoved še izboljšali?
+-------------------------------------------
+Možne izboljšave:
+1. Dodatni podatki:
+   - Število izdanih gradbenih dovoljenj (ponudba nepremičnin)
+   - Populacijski trendi in migracije
+   - Povprečne plače (kupna moč)
+   - Število odobrenih hipotek
+
+2. Alternativni modeli:
+   - VAR (Vector Autoregression): modelira vse spremenljivke skupaj
+   - LSTM nevronska mreža: boljša pri kompleksnih nelinearnih vzorcih
+   - XGBoost z zamaknjenimi spremenljivkami: dobro za tabelarične podatke
+
+3. Tehnične izboljšave:
+   - Daljše časovno obdobje (več podatkov = boljši model)
+   - Mesečni namesto četrtletnih podatkov (več podatkovnih točk)
+"""
+
+print(odgovori_1_2)
+```
+
+---
+
+# 2. Naloga: Klasifikacija
+
+## 2.1 SQL
+
+```{python}
+#| echo: true
+#| warning: false
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import sqlite3
+
+plt.rcParams['figure.figsize'] = (12, 5)
+sns.set_theme(style="whitegrid")
+
+# Uvoz podatkov
+df = pd.read_csv('improved_fraud_dataset.csv')
+print(f"Velikost podatkov: {df.shape[0]} vrstic, {df.shape[1]} stolpcev")
+
+# Lokalna SQL baza iz CSV podatkov
+conn = sqlite3.connect('fraud_database.db')
+df.to_sql('transakcije', conn, if_exists='replace', index=False)
+print("SQL baza ustvarjena")
+print(f"Tabela 'transakcije' ima {len(df)} vrstic")
+```
+
+```{python}
+#| echo: true
+#| warning: false
+
+# Vprašanje 1: Kakšen delež transakcij pripada goljufijam?
+poizvedba1 = """
+SELECT 
+    COUNT(*) as skupaj_transakcij,
+    SUM(is_fraud) as stevilo_goljufij,
+    ROUND(AVG(is_fraud) * 100, 2) as delez_goljufij_procent
+FROM transakcije
+"""
+rezultat1 = pd.read_sql_query(poizvedba1, conn)
+print("VPRAŠANJE 1: Delež goljufij")
+print(rezultat1)
+
+# Vprašanje 2: V povprečju koliko transakcij pripada enemu uporabniku?
+poizvedba2 = """
+SELECT ROUND(AVG(stevilo_transakcij), 2) as povprecje_transakcij_na_uporabnika
+FROM (
+    SELECT user_id, COUNT(*) as stevilo_transakcij
+    FROM transakcije
+    GROUP BY user_id
+)
+"""
+rezultat2 = pd.read_sql_query(poizvedba2, conn)
+print("\nVPRAŠANJE 2: Povprečno število transakcij na uporabnika")
+print(rezultat2)
+```
+
+### Odgovori na SQL vprašanja
+
+- **Delež goljufij:** Od 1.000.000 transakcij je 91.710 goljufij = 9.17%. Dataset je neuravnotežen (91% normalnih, 9% goljufij), kar je tipično za probleme zaznave goljufij v praksi.
+- **Povprečno število transakcij na uporabnika:** 50 transakcij na uporabnika.
+
+## 2.2 Klasifikacija goljufij
+
+```{python}
+#| echo: true
+#| warning: false
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
+from sklearn.preprocessing import LabelEncoder
+
+# Izbira stolpcev za model (brez identifikatorjev)
+izpusti = ['transaction_id', 'user_id', 'organization', 'transaction_timestamp']
+df_model = df.drop(columns=izpusti)
+
+# Pretvorba besedilnih stolpcev v številke
+le = LabelEncoder()
+besedilni_stolpci = df_model.select_dtypes(include='object').columns
+for stolpec in besedilni_stolpci:
+    df_model[stolpec] = le.fit_transform(df_model[stolpec].astype(str))
+
+print("Besedilni stolpci pretvorjeni v številke")
+
+# Ločitev vhodnih spremenljivk (X) od ciljne (y)
+X = df_model.drop(columns=['is_fraud'])
+y = df_model['is_fraud']
+
+# Razdelitev na učno (80%) in testno množico (20%)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+print(f"Učna množica: {len(X_train)} vrstic")
+print(f"Testna množica: {len(X_test)} vrstic")
+print(f"Goljufij v učni množici: {y_train.sum()} ({y_train.mean()*100:.1f}%)")
+print(f"Goljufij v testni množici: {y_test.sum()} ({y_test.mean()*100:.1f}%)")
+```
+
+```{python}
+#| echo: true
+#| warning: false
+
+from imblearn.over_sampling import SMOTE
+
+print("Uravnoteženje podatkov s SMOTE...")
+smote = SMOTE(random_state=42, sampling_strategy=0.3)
+X_train_sm, y_train_sm = smote.fit_resample(X_train, y_train)
+
+print(f"Po SMOTE - normalnih: {(y_train_sm==0).sum()}")
+print(f"Po SMOTE - goljufij: {(y_train_sm==1).sum()}")
+
+print("\nUčenje novega modela...")
+model2 = RandomForestClassifier(
+    n_estimators=100,
+    class_weight='balanced',
+    random_state=42,
+    n_jobs=-1
+)
+model2.fit(X_train_sm, y_train_sm)
+print("Model 2 uspešno naučen")
+```
+
+```{python}
+#| echo: true
+#| warning: false
+
+# Napoved z novim modelom
+y_pred2 = model2.predict(X_test)
+y_pred_proba2 = model2.predict_proba(X_test)[:, 1]
+
+print("=== OCENA MODELA 2 (s SMOTE) ===\n")
+print("Klasifikacijsko poročilo:")
+print(classification_report(y_test, y_pred2, target_names=['Normalna', 'Goljufija']))
+print(f"ROC-AUC score: {roc_auc_score(y_test, y_pred_proba2):.4f}")
+
+# Konfuzijska matrika
+plt.figure(figsize=(8, 6))
+cm2 = confusion_matrix(y_test, y_pred2)
+sns.heatmap(cm2, annot=True, fmt='d', cmap='Blues',
+            xticklabels=['Normalna', 'Goljufija'],
+            yticklabels=['Normalna', 'Goljufija'])
+plt.title('Konfuzijska matrika - Model 2 (s SMOTE)', fontsize=14, fontweight='bold')
+plt.ylabel('Dejanska vrednost')
+plt.xlabel('Napovedana vrednost')
+plt.tight_layout()
+plt.savefig('konfuzijska_matrika2.png', dpi=150, bbox_inches='tight')
+plt.show()
+```
+
+```{python}
+#| echo: true
+#| warning: false
+
+# Kateri stolpci so najbolj pomembni za napoved?
+pomembnost = pd.DataFrame({
+    'Spremenljivka': X.columns,
+    'Pomembnost': model2.feature_importances_
+}).sort_values('Pomembnost', ascending=False)
+
+plt.figure(figsize=(10, 8))
+sns.barplot(data=pomembnost, x='Pomembnost', y='Spremenljivka',
+            hue='Spremenljivka', palette='viridis', legend=False)
+plt.title('Pomembnost spremenljivk', fontsize=14, fontweight='bold')
+plt.tight_layout()
+plt.savefig('pomembnost_spremenljivk.png', dpi=150, bbox_inches='tight')
+plt.show()
+
+print("\nTop 5 najpomembnejših spremenljivk:")
+print(pomembnost.head())
+```
+
+```{python}
+#| echo: true
+#| warning: false
+
+odgovori_2_2 = """
+ODGOVORI NA VPRAŠANJA - 2.2 KLASIFIKACIJA GOLJUFIJ
+====================================================
+
+1. ZAKAJ RANDOM FOREST?
+- Deluje dobro z neuravnoteženimi podatki (9% goljufij)
+- Robusten na outlierje in ne potrebuje normalizacije podatkov
+- Poda pomembnost spremenljivk - ključno za razlago v bančništvu
+- Manj dovzeten za pretirano prilagajanje (overfitting) kot posamezno drevo
+- Enostavno razložljiv regulatorjem in poslovnim uporabnikom
+
+2. OBDELAVA PODATKOV:
+- Odstranili smo identifikatorje (transaction_id, user_id, organization,
+  transaction_timestamp) - ne vsebujejo napovedne informacije
+- Besedilne spremenljivke smo kodirali z LabelEncoder v številke
+  (Random Forest ne more delati z besedilom)
+- Uporabili smo SMOTE za uravnoteženje razredov:
+  * Brez SMOTE: model zazna samo 16 goljufij (recall=0.00)
+  * S SMOTE: model zazna 3626 goljufij (recall=0.20)
+- Podatke smo razdelili 80/20 na učno in testno množico
+
+3. NAPOVEDNA MOČ MODELA:
+Metrike modela 2 (s SMOTE):
+- ROC-AUC: 0.8832 (dobro - 1.0 bi bil popoln model)
+- Recall goljufij: 0.20 (zazna 20% vseh goljufij)
+- Precision goljufij: 0.30 (30% napovedanih goljufij je res goljufij)
+- F1-score goljufij: 0.24
+
+Bili smo pozorni na:
+- Recall (ne spregledati goljufij) je v bančništvu pomembnejši od Precision
+- Accuracy (91%) je zavajajoča pri neuravnoteženih podatkih
+- ROC-AUC je boljša metrika za neuravnotežene datasete
+- Konfuzijska matrika za razumevanje napak modela
+
+4. IZBOLJŠAVE Z DALJŠIM ČASOVNIM OBDOBJEM:
+- Zaznavanje vzorcev obnašanja uporabnika skozi čas
+- Sezonski vzorci goljufij (npr. prazniki)
+- Sledenje spreminajočim se vzorcem goljufij (concept drift)
+- Več podatkov = boljše učenje redkih vzorcev goljufij
+
+5. POMANJKLJIVOSTI MODELA:
+- Nizek recall (0.20) - 80% goljufij še vedno spregleda
+- SMOTE ustvarja sintetične primere - ne realni podatki
+- Model ne upošteva zaporedja transakcij (vedenjski vzorci)
+- LabelEncoder ne upošteva semantičnih odnosov med kategorijami
+Možne rešitve:
+- XGBoost ali LightGBM (boljši z neuravnoteženimi podatki)
+- LSTM nevronska mreža (upošteva zaporedje transakcij)
+- Boljše inženirstvo značilk (npr. povprečni znesek uporabnika)
+
+6. EU AKT O UMETNI INTELIGENCI - DISKRIMINATORNI PODATKI:
+Podatki ki bi lahko povzročili diskriminacijo:
+- Lokacija (city, country): diskriminacija po geografskem področju
+  lahko posredno odraža etnično ali socialno diskriminacijo
+- Čas transakcije (hour, is_night): delavci z nočnimi izmenami
+  bi bili neupravičeno označeni kot sumljivi
+- Starost računa: novi priseljenci ali mladi imajo nove račune
+  in bi bili neupravičeno označeni kot tvegani
+- Valuta: diskriminacija po valuti lahko posredno pomeni
+  diskriminacijo po narodnosti
+- Podatki ki jih nimamo a bi bili problematični:
+  * Spol, starost, etnična pripadnost, vera - direktna diskriminacija
+  * Poštna številka - posredna diskriminacija po premoženjskem stanju
+"""
+
+print(odgovori_2_2)
+```
+
+---
+
+# 3. Naloga: Validacija modelov
+
+## 3.1 Validacija na splošno
+
+```{python}
+#| echo: true
+#| warning: false
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy import stats
+
+plt.rcParams['figure.figsize'] = (12, 5)
+sns.set_theme(style="whitegrid")
+
+odgovori_3_1 = """
+ODGOVORI - 3.1 VALIDACIJA NA SPLOŠNO
+======================================
+
+KAJ JE VALIDACIJA?
+Validacija je sistematičen proces preverjanja ali model:
+- Deluje tako kot je bil zasnovan
+- Je primeren za namen uporabe
+- Ostaja zanesljiv skozi čas
+V bančništvu je validacija obvezna zahteva regulatorjev (ECB, Banka Slovenije).
+
+KLJUČNI KORAKI VALIDACIJE:
+
+1. KONCEPTUALNI PREGLED
+   - Preverimo teoretično utemeljenost modela
+   - Ali so spremenljivke ekonomsko smiselne?
+   - Ali so predznaki koeficientov pravilni?
+   - Ali je metodologija ustrezna?
+
+2. STATISTIČNI PREGLED
+   - Preverimo statistično značilnost koeficientov (p-vrednosti)
+   - Ocenimo prileganje modela (R-squared, AIC, BIC)
+   - Preverimo predpostavke modela (normalnost, homoskedastičnost)
+   - Testiramo ostanke modela
+
+3. PREVERITEV NAPOVEDNE MOČI
+   - Kako dobro model napove na novih podatkih?
+   - Merimo z ustreznimi metrikami (AUC, Gini, KS statistika)
+   - Primerjamo napovedi z dejanskimi vrednostmi
+
+4. STABILNOSTNI PREGLED
+   - Ali model deluje enako dobro v različnih obdobjih?
+   - Ali deluje enako v različnih segmentih?
+   - PSI test (Population Stability Index)
+
+5. DOKUMENTACIJA IN MNENJE
+   - Dokumentiramo ugotovitve
+   - Podamo mnenje: pozitivno / s pridržkom / negativno
+   - Predlagamo morebitne izboljšave
+"""
+
+print(odgovori_3_1)
+```
+
+## 3.2 Konceptualni pregled modela
+
+```{python}
+#| echo: true
+#| warning: false
+
+# Uvoz podatkov
+ostanki = pd.read_excel('Ostanki_modela.xlsx')
+podatki = pd.read_excel('Podatki.xlsx')
+
+print("=== OSTANKI MODELA ===")
+print(f"Velikost: {ostanki.shape}")
+print(ostanki.head())
+
+print("\n=== PODATKI ===")
+print(f"Velikost: {podatki.shape}")
+print(podatki.head())
+print("\nStevilke stolpcev:")
+print(podatki.dtypes)
+```
+
+```{python}
+#| echo: true
+#| warning: false
+
+# Preimenovanje stolpca
+ostanki.columns = ['ostanki']
+
+fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+fig.suptitle('Analiza ostankov modela', fontsize=16, fontweight='bold')
+
+# Graf 1: Ostanki skozi čas
+axes[0,0].plot(ostanki['ostanki'], color='steelblue', linewidth=2, marker='o', markersize=4)
+axes[0,0].axhline(y=0, color='red', linestyle='--', linewidth=1.5)
+axes[0,0].set_title('Ostanki skozi čas')
+axes[0,0].set_xlabel('Opazovanje')
+axes[0,0].set_ylabel('Ostanek')
+
+# Graf 2: Histogram ostankov
+axes[0,1].hist(ostanki['ostanki'], bins=15, color='steelblue', edgecolor='white')
+axes[0,1].set_title('Porazdelitev ostankov')
+axes[0,1].set_xlabel('Vrednost ostanka')
+axes[0,1].set_ylabel('Frekvenca')
+
+# Graf 3: Q-Q plot (normalnost)
+stats.probplot(ostanki['ostanki'], dist="norm", plot=axes[1,0])
+axes[1,0].set_title('Q-Q plot (normalnost ostankov)')
+
+# Graf 4: Absolutne vrednosti ostankov (heteroskedastičnost)
+axes[1,1].plot(np.abs(ostanki['ostanki']), color='tomato', linewidth=2, marker='o', markersize=4)
+axes[1,1].set_title('Absolutne vrednosti ostankov')
+axes[1,1].set_xlabel('Opazovanje')
+axes[1,1].set_ylabel('|Ostanek|')
+
+plt.tight_layout()
+plt.savefig('analiza_ostankov.png', dpi=150, bbox_inches='tight')
+plt.show()
+print("Grafi ostankov shranjeni")
+```
+
+```{python}
+#| echo: true
+#| warning: false
+
+from statsmodels.stats.stattools import durbin_watson
+from statsmodels.stats.diagnostic import acorr_ljungbox
+
+# Test 1: Shapiro-Wilk (normalnost)
+stat_sw, p_sw = stats.shapiro(ostanki['ostanki'])
+print("=== TEST NORMALNOSTI (Shapiro-Wilk) ===")
+print(f"Statistika: {stat_sw:.4f}")
+print(f"p-vrednost: {p_sw:.4f}")
+print(f"Zaključek: {'Ostanki so normalni (p>0.05)' if p_sw > 0.05 else 'Ostanki NISO normalni (p<0.05)'}")
+
+# Test 2: Durbin-Watson (avtokorelacija)
+dw = durbin_watson(ostanki['ostanki'])
+print("\n=== TEST AVTOKORELACIJE (Durbin-Watson) ===")
+print(f"Statistika: {dw:.4f}")
+print(f"Zaključek: {'Ni avtokorelacije (vrednost ~2)' if 1.5 < dw < 2.5 else 'Prisotna avtokorelacija (vrednost daleč od 2)'}")
+
+# Test 3: Ljung-Box (avtokorelacija ostankov)
+lb_test = acorr_ljungbox(ostanki['ostanki'], lags=[4, 8], return_df=True)
+print("\n=== LJUNG-BOX TEST ===")
+print(lb_test)
+print(f"Zaključek: {'Ni avtokorelacije' if (lb_test['lb_pvalue'] > 0.05).all() else 'Prisotna avtokorelacija v ostankih'}")
+```
+
+```{python}
+#| echo: true
+#| warning: false
+
+# Pregled koeficientov modela iz naloge
+koeficienti = pd.DataFrame({
+    'Spremenljivka': ['Konstanta', 'PD2', 'EUR6M0', 'GDP0', 'EUR6M1', 'EUR6M5', 'CPI0', 'CPI5', 'U1'],
+    'Opis': [
+        'Konstanta',
+        'Zamaknjena PD (1 kvartal)',
+        'Euribor 6M (tekoče obdobje)',
+        'BDP (tekoče obdobje)',
+        'Euribor 6M (1 kvartal nazaj)',
+        'Euribor 6M (5 kvartali nazaj)',
+        'Inflacija CPI (tekoče obdobje)',
+        'Inflacija CPI (5 kvartali nazaj)',
+        'Brezposelnost (1 kvartal naprej)'
+    ],
+    'Koeficient': [1.4584, 0.325, 2.5649, 0.4243, -1.6332, 0.1635, -0.2624, -0.2325, -0.0895],
+    'p_vrednost': [0.005, 0.0102, 0.0001, 0.001, 0.0148, 0.0694, 0.0148, 0.0174, 0.0799],
+    'Statisticno_znacilen': ['Da', 'Da', 'Da', 'Da', 'Da', 'Ne (p>0.05)', 'Da', 'Da', 'Ne (p>0.05)']
+})
+
+print("=== PREGLED KOEFICIENTOV MODELA ===")
+print(koeficienti.to_string(index=False))
+
+print("\n=== STATISTIČNE METRIKE MODELA ===")
+print(f"Adjusted R²: 0.7784")
+print(f"Razlaga: Model pojasni 77.84% variance v PD - dobro prileganje")
+
+# Vizualizacija koeficientov
+plt.figure(figsize=(12, 6))
+barve = ['green' if p < 0.05 else 'orange' for p in koeficienti['p_vrednost']]
+plt.barh(koeficienti['Spremenljivka'], koeficienti['Koeficient'], color=barve)
+plt.axvline(x=0, color='red', linestyle='--', linewidth=1.5)
+plt.title('Koeficienti modela (zelena=statistično značilni, oranžna=mejni)',
+          fontsize=13, fontweight='bold')
+plt.xlabel('Vrednost koeficienta')
+plt.tight_layout()
+plt.savefig('koeficienti_modela.png', dpi=150, bbox_inches='tight')
+plt.show()
+print("Graf koeficientov shranjen")
+```
+
+```{python}
+#| echo: true
+#| warning: false
+
+mnenje_3_2 = """
+VALIDACIJSKO MNENJE - 3.2 KONCEPTUALNI PREGLED
+================================================
+
+1. STATISTIČNE METRIKE
+-----------------------
+POZITIVNO:
+- Adjusted R² = 0.7784 - model pojasni 78% variance PD (dobro)
+- Večina koeficientov statistično značilnih (p < 0.05)
+- Ostanki so normalno porazdeljeni (Shapiro-Wilk p=0.41)
+- Ni avtokorelacije v ostankih (Ljung-Box p>0.05)
+- Durbin-Watson = 1.57 (blizu 2, sprejemljivo)
+
+POMANJKLJIVOSTI:
+- EUR6M5 (p=0.0694) - ni statistično značilen na nivoju 5%
+- U1 (p=0.0799) - ni statistično značilen na nivoju 5%
+  Obe spremenljivki bi morali preveriti ali jih obdržimo v modelu
+- Durbin-Watson = 1.57 - rahlo pod idealno vrednostjo 2.0
+  Možna šibka pozitivna avtokorelacija ostankov
+- Majhen vzorec (43 opazovanj) - omejuje zanesljivost ocen
+
+2. SMISELNOST KOEFICIENTOV
+---------------------------
+PD2 (0.325): Pozitiven - višja pretekla PD → višja trenutna PD.
+   Ekonomsko logično (vztrajnost neplačil).
+
+GDP0 (0.424): Pozitiven - PRESENETLJIVO
+   Pričakovali bi negativen predznak (višji BDP → manj neplačil).
+   (-) Možna multikolinearnost z drugimi spremenljivkami!
+
+EUR6M0 (2.565): Pozitiven - višji Euribor → višja PD.
+   Ekonomsko logično (dražji krediti → več neplačil).
+
+EUR6M1 (-1.633): Negativen - zamaknjeni Euribor zmanjša PD.
+   Skupaj z EUR6M0 kaže kompleksen zamaknjeni učinek obrestnih mer.
+   (-) Prisotnost EUR6M0 in EUR6M1 hkrati nakazuje multikolinearnost!
+
+CPI0 (-0.262) in CPI5 (-0.233): Negativna - višja inflacija → nižja PD.
+   Ekonomsko logično (inflacija zmanjša realno vrednost dolga → lažje odplačevanje).
+
+(-) U1 (-0.090): Negativen - višja brezposelnost → nižja PD?
+   TO NI EKONOMSKO LOGIČNO! Pričakujemo pozitiven predznak.
+   Možna razlaga: multikolinearnost z drugimi spremenljivkami.
+
+3. SKUPNA OCENA MODELA
+-----------------------
+OCENA: S PRIDRŽKOM
+
+Utemeljitev:
++ Model ima dobro statistično prileganje (R²=0.78)
++ Večina koeficientov je statistično značilnih
++ Ostanki zadostijo statističnim predpostavkam
+- Koeficient U1 ima napačen predznak (ekonomsko nesmiselno)
+- GDP0 ima pozitiven predznak - vprašljivo ekonomsko
+- EUR6M0 in EUR6M1 skupaj kažeta na multikolinearnost
+- Dve spremenljivki nista statistično značilni (p>0.05)
+- Majhen vzorec (43 opazovanj) za 8 spremenljivk
+
+PRIPOROČILA:
+→ Preveriti multikolinearnost (VIF test)
+→ Razmisliti o odstranitvi EUR6M5 in/ali U1
+→ Preveriti predznak GDP0 in U1
+→ Model je pogojno primeren za uporabo z rednim monitoringom
+"""
+
+print(mnenje_3_2)
+```
+
+```{python}
+#| echo: true
+#| warning: false
+
+from statsmodels.regression.linear_model import OLS
+from statsmodels.tools import add_constant
+
+# Priprava podatkov
+print("Podatki:")
+print(podatki.head())
+print(f"\nVelikost: {podatki.shape}")
+print(f"\nManjkajoče vrednosti:")
+print(podatki.isnull().sum())
+```
+
+```{python}
+#| echo: true
+#| warning: false
+
+import statsmodels.api as sm
+
+# Zamiki (lag)
+podatki_model = podatki.copy()
+podatki_model['PD_lag1'] = podatki_model['PD'].shift(1)
+podatki_model['U_lag1'] = podatki_model['U'].shift(1)
+podatki_model['EUR6M_lag1'] = podatki_model['EUR6M'].shift(1)
+
+# Odstranitev prve vrstice kjer so NaN zaradi zamikanja
+podatki_model = podatki_model.dropna()
+
+print(f"Podatki za model: {podatki_model.shape[0]} opazovanj")
+
+# Definiranje odvisne in neodvisne spremenljivke
+y = podatki_model['PD']
+X = podatki_model[['PD_lag1', 'EUR6M', 'EUR6M_lag1', 'CPI', 'U_lag1']]
+X = sm.add_constant(X)
+
+# Učenje modela
+model_izboljsan = sm.OLS(y, X).fit()
+print("\n=== IZBOLJŠAN MODEL ===")
+print(model_izboljsan.summary())
+```
+
+```{python}
+#| echo: true
+#| warning: false
+
+komentar_izboljsan = """
+IZBOLJŠAN MODEL - KOMENTAR
+===========================
+
+SPECIFIKACIJA:
+Odvisna spremenljivka: PD (verjetnost neplačila)
+Neodvisne spremenljivke: PD_lag1, EUR6M, EUR6M_lag1, CPI, U_lag1
+
+PRIMERJAVA Z ORIGINALNIM MODELOM:
++------------------+----------+----------+
+| Metrika          | Original | Izboljšan|
++------------------+----------+----------+
+| Adj. R²          | 0.7784   | 0.687    |
+| Durbin-Watson    | 1.57     | 2.386    |
+| Št. spremenljivk | 8        | 5        |
++------------------+----------+----------+
+
+PREDNOSTI IZBOLJŠANEGA MODELA:
+- Enostavnejši (5 namesto 8 spremenljivk)
+- Boljši Durbin-Watson (2.39 vs 1.57) - manj avtokorelacije
+- Odstranjen GDP z ekonomsko vprašljivim predznakom
+- Vsi predznaki ekonomsko smiselni
+
+SLABOSTI IZBOLJŠANEGA MODELA:
+- Nižji Adj. R² (0.687 vs 0.778)
+- EUR6M, EUR6M_lag1 in U_lag1 niso statistično značilni
+- Le 47 opazovanj - majhen vzorec
+
+PREDLAGANE NADALJNJE IZBOLJŠAVE:
+1. Uporaba ARIMA modela - eksplicitno modeliranje časovnih vrst
+2. Dodati spremenljivke: NPL ratio, kreditna rast, VIX indeks
+3. Več podatkov - daljše časovno obdobje
+4. Robustne standardne napake za heteroskedastičnost
+5. Preveriti nelinearnost z logaritemskimi transformacijami
+
+OMEJITVE MODELA:
+- Majhen vzorec (47 opazovanj) omejuje statistično moč
+- Model predpostavlja linearnost - morda nerealno
+- Časovna vrsta PD je verjetno nestacionarna
+"""
+
+print(komentar_izboljsan)
+```
+
+## 3.3 Kvalitativni pregled
+
+```{python}
+#| echo: true
+#| warning: false
+
+# Uvoz validacijskih podatkov
+valid = pd.read_csv('validacija.csv', sep=None, engine='python')
+valid['PD'] = valid['PD'].astype(str).str.replace(',', '.').astype(float)
+
+print(f"Velikost: {valid.shape}")
+print(f"\nDelež neplačnikov: {valid['DEF_CLIENT'].mean()*100:.2f}%")
+
+# Analiza po razredih
+razredi = valid.groupby('PD_RATING_ORD').agg(
+    Stevilo=('CLIENT_ID', 'count'),
+    Neplačniki=('DEF_CLIENT', 'sum'),
+    Stopnja_neplačil=('DEF_CLIENT', 'mean'),
+    Povprecna_PD=('PD', 'mean')
+).round(4)
+
+print("\n=== POVPREČNA PD PO BONITETNIH RAZREDIH ===")
+print(razredi)
+```
+
+```{python}
+#| echo: true
+#| warning: false
+
+from sklearn.metrics import roc_auc_score, roc_curve
+
+# Graf 1: Dejanska vs napovedana PD po razredih
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+x = range(len(razredi))
+width = 0.35
+axes[0].bar([i - width/2 for i in x], razredi['Stopnja_neplačil'],
+            width, label='Dejanska stopnja', color='tomato', edgecolor='white')
+axes[0].bar([i + width/2 for i in x], razredi['Povprecna_PD'],
+            width, label='Napovedana PD', color='steelblue', edgecolor='white')
+axes[0].set_title('Dejanska vs napovedana stopnja neplačil', fontweight='bold')
+axes[0].set_xlabel('Bonitetni razred')
+axes[0].set_ylabel('Stopnja neplačil')
+axes[0].set_xticks(list(x))
+axes[0].set_xticklabels(razredi.index, rotation=45)
+axes[0].legend()
+
+# Graf 2: ROC krivulja
+fpr, tpr, _ = roc_curve(valid['DEF_CLIENT'], valid['PD'])
+auc = roc_auc_score(valid['DEF_CLIENT'], valid['PD'])
+axes[1].plot(fpr, tpr, color='steelblue', linewidth=2,
+             label=f'ROC krivulja (AUC = {auc:.4f})')
+axes[1].plot([0,1], [0,1], 'r--', linewidth=1, label='Naključni model')
+axes[1].set_title('ROC krivulja', fontweight='bold')
+axes[1].set_xlabel('Stopnja lažno pozitivnih (FPR)')
+axes[1].set_ylabel('Stopnja pravilno pozitivnih (TPR)')
+axes[1].legend()
+
+plt.tight_layout()
+plt.savefig('validacija_model.png', dpi=150, bbox_inches='tight')
+plt.show()
+
+# Gini koeficient
+gini = 2 * auc - 1
+print(f"AUC: {auc:.4f}")
+print(f"Gini koeficient: {gini:.4f}")
+print(f"Razlaga: {'Dobra ločljivost (Gini>0.6)' if gini > 0.6 else 'Zmerna ločljivost (Gini 0.4-0.6)' if gini > 0.4 else 'Slaba ločljivost (Gini<0.4)'}")
+```
+
+```{python}
+#| echo: true
+#| warning: false
+
+from scipy.stats import ks_2samp
+
+# KS test - ločljivost med plačniki in neplačniki
+pd_placniki = valid[valid['DEF_CLIENT']==0]['PD']
+pd_neplačniki = valid[valid['DEF_CLIENT']==1]['PD']
+
+ks_stat, ks_p = ks_2samp(pd_placniki, pd_neplačniki)
+print("=== KS TEST (ločljivost) ===")
+print(f"KS statistika: {ks_stat:.4f}")
+print(f"p-vrednost: {ks_p:.6f}")
+print(f"Razlaga: {'Model ločuje (p<0.05)' if ks_p < 0.05 else 'Model ne ločuje (p>0.05)'}")
+
+# Porazdelitev PD za plačnike vs neplačnike
+plt.figure(figsize=(12, 5))
+plt.subplot(1, 2, 1)
+plt.hist(pd_placniki, bins=50, alpha=0.6, color='steelblue', label='Plačniki', density=True)
+plt.hist(pd_neplačniki, bins=20, alpha=0.6, color='tomato', label='Neplačniki', density=True)
+plt.title('Porazdelitev PD: plačniki vs neplačniki', fontweight='bold')
+plt.xlabel('Napovedana PD')
+plt.ylabel('Gostota')
+plt.legend()
+
+# Analiza po velikosti podjetja
+plt.subplot(1, 2, 2)
+velikost_analiza = valid.groupby('LEGAL_SIZE').agg(
+    Stopnja_neplačil=('DEF_CLIENT', 'mean'),
+    Povprecna_PD=('PD', 'mean'),
+    Stevilo=('CLIENT_ID', 'count')
+).round(4)
+
+x = range(len(velikost_analiza))
+width = 0.35
+plt.bar([i-width/2 for i in x], velikost_analiza['Stopnja_neplačil'],
+        width, label='Dejanska', color='tomato', edgecolor='white')
+plt.bar([i+width/2 for i in x], velikost_analiza['Povprecna_PD'],
+        width, label='Napovedana PD', color='steelblue', edgecolor='white')
+plt.title('Dejanska vs napovedana PD po velikosti podjetja', fontweight='bold')
+plt.xticks(list(x), velikost_analiza.index, rotation=45)
+plt.legend()
+
+plt.tight_layout()
+plt.savefig('ks_test_segmenti.png', dpi=150, bbox_inches='tight')
+plt.show()
+
+print("\n=== ANALIZA PO VELIKOSTI PODJETJA ===")
+print(velikost_analiza)
+```
+
+```{python}
+#| echo: true
+#| warning: false
+
+mnenje_3_3 = """
+VALIDACIJSKO MNENJE - 3.3 KVALITATIVNI PREGLED
+================================================
+
+PODATKI: 6304 komitentov, 1.35% neplačnikov, 9 bonitetnih razredov
+
+1. ALI MODEL LOČUJE NEPLAČNIKE OD PLAČNIKOV?
+---------------------------------------------
+DA - model statistično ločuje neplačnike od plačnikov:
+- KS statistika = 0.2384 (p=0.000112 < 0.05)
+- Stopnja neplačil raste z slabšim bonitetnim razredom:
+  AA: 0.65% → A: 0.65% → BBB: 1.29% → CCC: 2.83% → C: 11.76%
+- Monoton trend je prisoten
+
+AMPAK: Gini koeficient = 0.31 (AUC=0.65) kaže SLABO ločljivost
+- Sprejemljiva meja v bančništvu je Gini > 0.40
+- Model je na meji sprejemljivosti
+
+2. ALI NAPOVEDANA VERJETNOST USTREZA DEJANSKEMU STANJU?
+---------------------------------------------------------
+NE - prisotna sistematična napaka kalibracije:
+- Pri dobrih razredih (AA, A): model podcenjuje tveganje
+  AA: dejanska 0.65% vs napovedana 0.19%
+- Pri slabih razredih (C, D): model precenjuje tveganje
+  C: dejanska 11.76% vs napovedana 16.82%
+- Model ni dobro kalibriran → potrebna rekalibracija!
+
+3. ALI MODEL OHRANJA NAPOVEDNO MOČ V RAZLIČNIH SKUPINAH?
+----------------------------------------------------------
+Analiza po velikosti podjetja:
+- Mikro podjetja: dejanska 1.34% vs napovedana 1.51% (blizu)
+- Mala podjetja: dejanska 1.56% vs napovedana 2.18% (precenjena)
+- Samo 2 segmenta - premalo za celovito analizo segmentov
+Priporočamo analizo po SKD dejavnosti in letu registracije
+
+4. KAJ BI ŠE POGLEDALI PRI MODELU?
+-------------------------------------
+- PSI test (Population Stability Index): ali se je populacija
+  komitentov spremenila od razvoja modela?
+- Backtesting: primerjava napovedi z dejanskimi neplačili
+  skozi več let
+- Analiza po SKD dejavnosti: ali model deluje enako v vseh panogah?
+- Analiza manjšinskih skupin: ali model diskriminira po spolu,
+  starosti ali lokaciji?
+- Preveriti ali so vhodne spremenljivke stabilne skozi čas
+- Primerjava z benchmark modelom (npr. samo logistična regresija)
+
+5. SKUPNA OCENA MODELA
+-----------------------
+OCENA: S PRIDRŽKOM
+
+Pozitivno:
+- Model statistično ločuje neplačnike od plačnikov (KS test)
+- Monoton trend stopnje neplačil po razredih
+- Nizka stopnja neplačil (1.35%) - model je konzervativen
+
+Negativno:
+- Gini = 0.31 - pod sprejemljivo mejo 0.40 za kreditne modele
+- Sistematična napaka kalibracije - PD ni dobro umerjena
+- Napovedana PD precenjena pri slabih razredih
+
+PRIPOROČILA:
+→ Nujna rekalibracija modela (Platt scaling ali isotonic regression)
+→ Pregled metodologije razvoja modela
+→ Povečati vzorec neplačnikov za boljše učenje
+→ Naslednja validacija v 6 mesecih (ne 12)
+→ Model pogojno primeren za uporabo - z rednim monitoringom
+"""
+
+print(mnenje_3_3)
+```
