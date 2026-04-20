@@ -2,3 +2,5 @@
 *.db
 *.png
 *.xlsx
+models.pklmodels.pkl
+models.pkl
